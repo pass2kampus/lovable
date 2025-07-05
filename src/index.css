@@ -104,6 +104,17 @@
   animation: fade-in 0.5s cubic-bezier(0.33,1,0.68,1);
 }
 
+/* Add animation for marquee */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  display: flex;
+  animation: marquee 20s linear infinite;
+}
+
 /* White space for card/section content */
 .section-padding {
   padding-top: 2.5rem;
