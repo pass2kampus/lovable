@@ -11,6 +11,7 @@ export interface School {
   ranking: string | null;
   tuition_fees: any | null;
   created_at: string | null;
+  subjects?: string[] | null;
 }
 
 export function useSchools() {
@@ -115,4 +116,44 @@ export function useSchoolDetail(id: string | null) {
   }, [id]);
 
   return { school, loading, error };
+}
+
+export function useSchoolSearch(searchTerm: string | null) {
+  const [schools, setSchools] = useState<School[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!searchTerm || searchTerm.trim().length === 0) {
+      setSchools([]);
+      setLoading(false);
+      return;
+    }
+
+    async function searchSchools() {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const { data, error } = await supabase
+          .from('schools')
+          .select('*')
+          .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%`)
+          .order('name');
+
+        if (error) throw error;
+        setSchools(data || []);
+      } catch (err) {
+        console.error('Error searching schools:', err);
+        setError(err as Error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    const debounceTimer = setTimeout(searchSchools, 300);
+    return () => clearTimeout(debounceTimer);
+  }, [searchTerm]);
+
+  return { schools, loading, error };
 }
