@@ -1,108 +1,118 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabaseClient';
 
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+export interface School {
+  id: string;
+  name: string;
+  city: string;
+  description: string | null;
+  website: string | null;
+  programs: string[] | null;
+  ranking: string | null;
+  tuition_fees: any | null;
+  created_at: string | null;
+}
 
 export function useSchools() {
-  return useQuery({
-    queryKey: ['schools'],
-    queryFn: async () => {
-      console.log('Fetching all schools from database...');
-      const { data, error } = await supabase
-        .from('schools')
-        .select('*')
-        .order('name');
-      
-      if (error) {
-        console.error('Error fetching schools:', error);
-        throw error;
+  const [schools, setSchools] = useState<School[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    async function fetchSchools() {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('schools')
+          .select('*')
+          .order('name');
+
+        if (error) throw error;
+        setSchools(data || []);
+      } catch (err) {
+        console.error('Error fetching schools:', err);
+        setError(err as Error);
+      } finally {
+        setLoading(false);
       }
-      console.log('Fetched schools:', data?.length, 'schools');
-      return data || [];
-    },
-    staleTime: 15 * 60 * 1000, // Cache for 15 minutes
-    gcTime: 60 * 60 * 1000, // Keep in cache for 1 hour
-    refetchOnWindowFocus: false,
-  });
+    }
+
+    fetchSchools();
+  }, []);
+
+  return { schools, loading, error };
 }
 
-export function useSchoolsByCity(cityName: string | null) {
-  return useQuery({
-    queryKey: ['schools', 'by-city', cityName],
-    queryFn: async () => {
-      if (!cityName) return [];
-      
-      console.log('Fetching schools for city:', cityName);
-      const { data, error } = await supabase
-        .from('schools')
-        .select('*')
-        .eq('city', cityName)
-        .order('name');
-      
-      if (error) {
-        console.error('Error fetching schools by city:', error);
-        throw error;
+export function useSchoolsByCity(city: string | null) {
+  const [schools, setSchools] = useState<School[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!city) {
+      setSchools([]);
+      setLoading(false);
+      return;
+    }
+
+    async function fetchSchoolsByCity() {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('schools')
+          .select('*')
+          .eq('city', city)
+          .order('name');
+
+        if (error) throw error;
+        setSchools(data || []);
+      } catch (err) {
+        console.error('Error fetching schools by city:', err);
+        setError(err as Error);
+      } finally {
+        setLoading(false);
       }
-      console.log('Fetched schools for', cityName, ':', data?.length, 'schools');
-      return data || [];
-    },
-    enabled: !!cityName,
-    staleTime: 15 * 60 * 1000,
-    gcTime: 60 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
+    }
+
+    fetchSchoolsByCity();
+  }, [city]);
+
+  return { schools, loading, error };
 }
 
-export function useSchoolSearch(searchTerm: string) {
-  return useQuery({
-    queryKey: ['schools', 'search', searchTerm],
-    queryFn: async () => {
-      if (!searchTerm.trim()) return [];
-      
-      console.log('Searching schools with term:', searchTerm);
-      const { data, error } = await supabase
-        .from('schools')
-        .select('*')
-        .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%,long_description.ilike.%${searchTerm}%`)
-        .order('name');
-      
-      if (error) {
-        console.error('Error searching schools:', error);
-        throw error;
-      }
-      console.log('Search results for', searchTerm, ':', data?.length, 'schools');
-      return data || [];
-    },
-    enabled: !!searchTerm.trim(),
-    staleTime: 10 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
-}
+export function useSchoolDetail(id: string | null) {
+  const [school, setSchool] = useState<School | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
-export function useSchoolDetail(schoolId: string | null) {
-  return useQuery({
-    queryKey: ['schools', 'detail', schoolId],
-    queryFn: async () => {
-      if (!schoolId) return null;
-      
-      console.log('Fetching school details for ID:', schoolId);
-      const { data, error } = await supabase
-        .from('schools')
-        .select('*')
-        .eq('id', schoolId)
-        .maybeSingle();
-      
-      if (error) {
-        console.error('Error fetching school details:', error);
-        throw error;
+  useEffect(() => {
+    if (!id) {
+      setSchool(null);
+      setLoading(false);
+      return;
+    }
+
+    async function fetchSchoolDetail() {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('schools')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (error) throw error;
+        setSchool(data);
+      } catch (err) {
+        console.error('Error fetching school details:', err);
+        setError(err as Error);
+      } finally {
+        setLoading(false);
       }
-      
-      console.log('Fetched school details:', data);
-      return data;
-    },
-    enabled: !!schoolId,
-    staleTime: 30 * 60 * 1000, // Cache detail pages longer
-    gcTime: 2 * 60 * 60 * 1000, // Keep in cache for 2 hours
-    refetchOnWindowFocus: false,
-  });
+    }
+
+    fetchSchoolDetail();
+  }, [id]);
+
+  return { school, loading, error };
 }
